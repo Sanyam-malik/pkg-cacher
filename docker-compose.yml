@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  pkg-cache:
+    image: forgejo.proxcloud.in/linux/pkg-cacher:latest
+    container_name: pkg-cache
+    ports:
+      - "8080:80"
+    environment:
+      CACHE_TTL: 24h
+    volumes:
+      - ./cache:/var/cache/nginx
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+    restart: unless-stopped

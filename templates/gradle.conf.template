@@ -1,0 +1,40 @@
+# ---------------------------------------------
+# Gradle Distributions
+# ---------------------------------------------
+location ~ ^/services\.gradle\.org/distributions/(gradle-[^/]+\.zip)$ {
+
+    set $upstream_host services.gradle.org;
+    set $upstream_path /distributions/$1;
+
+    proxy_pass https://$upstream_host$upstream_path$is_args$args;
+
+    proxy_set_header Host $upstream_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Connection "";
+
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    proxy_ignore_headers Cache-Control Expires;
+
+    proxy_ssl_server_name on;
+    proxy_ssl_name $upstream_host;
+
+    proxy_cache package_cache;
+    proxy_cache_valid 200 301 302 307 ${CACHE_TTL};
+    proxy_cache_valid 404 5m;
+
+    proxy_cache_lock on;
+    proxy_cache_lock_timeout 15s;
+    proxy_cache_background_update on;
+
+    proxy_cache_use_stale error timeout updating
+                          http_500 http_502
+                          http_503 http_504;
+
+    proxy_max_temp_file_size 0;
+    client_max_body_size 0;
+
+    add_header X-Cache-Status $upstream_cache_status always;
+}

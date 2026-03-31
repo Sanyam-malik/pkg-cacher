@@ -1,0 +1,91 @@
+# ---------------------------------------------
+# GitHub Releases
+# ---------------------------------------------
+location ~ ^/github\.com/([^/]+)/([^/]+)/releases/download/(.+)$ {
+
+    set $repo_owner $1;
+    set $repo_name  $2;
+    set $release_path $3;
+
+    set $upstream_host github.com;
+    set $upstream_path /$repo_owner/$repo_name/releases/download/$release_path;
+
+    proxy_pass https://$upstream_host$upstream_path$is_args$args;
+
+    proxy_set_header Host $upstream_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Connection "";
+
+    proxy_ssl_server_name on;
+    proxy_ssl_name $upstream_host;
+
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    proxy_intercept_errors on;
+    error_page 301 302 307 = @github_redirect;
+
+    proxy_cache package_cache;
+    proxy_cache_key "$scheme$upstream_host$request_uri";
+    proxy_cache_valid 200 ${CACHE_TTL};
+    proxy_cache_valid 404 5m;
+
+    proxy_no_cache $upstream_http_location;
+    proxy_cache_bypass $upstream_http_location;
+
+    proxy_cache_lock on;
+    proxy_cache_lock_timeout 15s;
+    proxy_cache_background_update on;
+    proxy_cache_revalidate on;
+
+    proxy_cache_use_stale error timeout updating
+                          http_500 http_502
+                          http_503 http_504;
+
+    proxy_ignore_headers Set-Cookie;
+
+    proxy_request_buffering off;
+    proxy_max_temp_file_size 0;
+    client_max_body_size 0;
+
+    add_header X-Cache-Status $upstream_cache_status always;
+}
+
+
+location @github_redirect {
+
+    set $redirect_url $upstream_http_location;
+
+    if ($redirect_url ~* "^https://([^/]+)(/.*)$") {
+        set $redirect_host $1;
+        set $redirect_path $2;
+    }
+
+    proxy_pass https://$redirect_host$redirect_path;
+
+    proxy_set_header Host $redirect_host;
+    proxy_ssl_server_name on;
+    proxy_ssl_name $redirect_host;
+
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    proxy_cache package_cache;
+
+    # cache final CDN file properly
+    proxy_cache_key "$scheme$redirect_host$redirect_path";
+
+    proxy_cache_valid 200 ${CACHE_TTL};
+
+    proxy_cache_lock on;
+    proxy_cache_background_update on;
+    proxy_cache_revalidate on;
+
+    proxy_cache_use_stale error timeout updating
+                          http_500 http_502
+                          http_503 http_504;
+
+    add_header X-Cache-Status $upstream_cache_status always;
+}

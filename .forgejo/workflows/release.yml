@@ -1,0 +1,23 @@
+name: Sync Pkg-Cacher Repository
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-pkg-cacher:
+    name: Sync Pkg-Cacher Repository
+    runs-on: ownubuntu
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push clean history to target repo
+        uses: actions/forgejo/clean-sync@v1
+        with:
+          remote_url: https://github.com/Sanyam-malik/pkg-cacher.git
+          token: ${{ vars.GIT_TOKEN }}
+          user_name: Sanyam-malik
+          user_email: sanyammalik105@gmail.com
